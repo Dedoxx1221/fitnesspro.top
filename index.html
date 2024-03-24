@@ -204,22 +204,6 @@ src="https://www.facebook.com/tr?id=1130855064735398&ev=PageView&noscript=1"
   body {
     font-family: 'Poppins', sans-serif;
     text-align: center;
-  }
-  .countdown {
-    font-size: 17px;
-    color: red;
-    font-weight: bold;
-  }
-  .text {
-    color: black;
-    font-weight: bold;
-  }
-</style>
-</head>
-<style>
-  body {
-    font-family: 'Poppins', sans-serif;
-    text-align: center;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -249,19 +233,21 @@ src="https://www.facebook.com/tr?id=1130855064735398&ev=PageView&noscript=1"
 
     // Função para atualizar o contador de vagas disponíveis
     function updateCountdown() {
-      document.getElementById('countdown').innerHTML = `<span class="text">Spots Available to Attend Free Presentation:</span> ${spots} spot(s)`;
-      spots -= 2; // Diminuindo o número de vagas de 2 em 2
-      // Verificando se ainda há vagas disponíveis
-      if (spots >= 1) {
+      if (spots > 1) {
+        document.getElementById('countdown').innerHTML = `<span class="text">Spots Available to Attend Free Presentation:</span> ${spots} spot(s)`;
+        spots -= 2; // Diminuindo o número de vagas de 2 em 2
         setTimeout(updateCountdown, 3000); // Atualiza a cada 3 segundos
-      } else {
-        document.getElementById('countdown').innerHTML = 'Sold out'; // Quando não há mais vagas
+      } else if (spots === 1) {
+        document.getElementById('countdown').innerHTML = `<span class="text">Spots Available to Attend Free Presentation:</span> ${spots} spot`;
       }
     }
 
     // Iniciando o contador
     updateCountdown();
   </script>
+</body>
+</html>
+
 </body>
 </html>
 </html>
