@@ -194,16 +194,12 @@ src="https://www.facebook.com/tr?id=1130855064735398&ev=PageView&noscript=1"
 							<img fetchpriority="high" decoding="async" width="1024" height="576" src="images/6KKFGgrArtyQ.jpg" class="attachment-large size-large wp-image-331" alt="" srcset="images/6KKFGgrArtyQ.jpg 1024w, images/32SvLoRcWtV0.jpg 300w, images/UM4Qvkd7Oj9B.jpg 768w, images/OOcfPD6ZIOQ6.jpg 1536w, images/k7bRE5dmiyTv.jpg 1920w" sizes="(max-width: 1024px) 100vw, 1024px">								</a>
 															</div>
 				</div>
-				<style>
-  body {
-    font-family: Arial, sans-serif;
-    text-align: center;
-  }
-  .countdown {
-    font-size: 24px;
-    color: red;
-  }
-</style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contador de Vagas</title>
 <style>
   body {
     font-family: 'Poppins', sans-serif;
@@ -231,7 +227,7 @@ src="https://www.facebook.com/tr?id=1130855064735398&ev=PageView&noscript=1"
     // Função para atualizar o contador de vagas disponíveis
     function updateCountdown() {
       document.getElementById('countdown').innerHTML = `<span class="text">Spots Available to Attend Free Presentation:</span> ${spots} spot(s)`;
-      spots--; // Decrementando o número de vagas
+      spots -= 2; // Decrementando o número de vagas de 2 em 2
       // Verificando se ainda há vagas disponíveis
       if (spots >= 1) {
         setTimeout(updateCountdown, 3000); // Atualiza a cada 3 segundos
@@ -244,6 +240,8 @@ src="https://www.facebook.com/tr?id=1130855064735398&ev=PageView&noscript=1"
     updateCountdown();
   </script>
 </body>
+</html>
+
 </html>
 </body>
 </html>
