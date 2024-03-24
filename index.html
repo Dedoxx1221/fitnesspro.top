@@ -216,9 +216,32 @@ src="https://www.facebook.com/tr?id=1130855064735398&ev=PageView&noscript=1"
   }
 </style>
 </head>
+<style>
+  body {
+    font-family: 'Poppins', sans-serif;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  .countdown {
+    font-size: 17px;
+    color: red;
+    font-weight: bold;
+  }
+  .text {
+    color: black;
+    font-weight: bold;
+  }
+</style>
+</head>
 <body>
-  <h1>Spots Available to Attend Free Presentation:</h1>
-  <div class="countdown" id="countdown"></div>
+  <div>
+    <h1>Spots Available to Attend Free Presentation:</h1>
+    <div class="countdown" id="countdown"></div>
+  </div>
 
   <script>
     // Definindo o número inicial de vagas
@@ -227,7 +250,7 @@ src="https://www.facebook.com/tr?id=1130855064735398&ev=PageView&noscript=1"
     // Função para atualizar o contador de vagas disponíveis
     function updateCountdown() {
       document.getElementById('countdown').innerHTML = `<span class="text">Spots Available to Attend Free Presentation:</span> ${spots} spot(s)`;
-      spots -= 2; // Decrementando o número de vagas de 2 em 2
+      spots -= 2; // Diminuindo o número de vagas de 2 em 2
       // Verificando se ainda há vagas disponíveis
       if (spots >= 1) {
         setTimeout(updateCountdown, 3000); // Atualiza a cada 3 segundos
@@ -241,9 +264,6 @@ src="https://www.facebook.com/tr?id=1130855064735398&ev=PageView&noscript=1"
   </script>
 </body>
 </html>
-
-</html>
-</body>
 </html>
 				<div class="elementor-element elementor-element-270a95b elementor-align-center elementor-widget elementor-widget-button" data-id="270a95b" data-element_type="widget" data-settings="{&quot;_animation&quot;:&quot;none&quot;}" data-widget_type="button.default">
 				<div class="elementor-widget-container">
