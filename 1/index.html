@@ -17,22 +17,17 @@ window.onload = function() {
     fetch('https://ipapi.co/json/')
     .then(response => response.json())
     .then(data => {
-        if (data.country == 'BR') {
-            // If the country is Brazil, display the error message
-            displayError404();
+        if (data.country === 'BR') {
+            // Se o país for Brasil, redireciona para a página de bloqueio
+            window.location.href = 'ps.html';
+        } else {
+            // Se não for do Brasil, continue carregando o site normalmente
+            // Você pode adicionar mais código aqui se necessário
         }
     })
     .catch(error => {
-        console.error('There was an error fetching location:', error);
+        console.error('Houve um erro ao obter a localização:', error);
     });
-}
-
-function displayError404() {
-    // Replace the body content with the 404 error message
-    document.body.innerHTML = '<div style="text-align: center; margin-top: 20%;">' +
-                               '<h1 style="font-size: 5em;">Error 404</h1>' +
-                               '<p style="font-size: 2em;">This site is currently unavailable</p>' +
-                               '</div>';
 }
 </script>
 <style id="wp-emoji-styles-inline-css">
