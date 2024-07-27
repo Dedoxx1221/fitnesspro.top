@@ -3,19 +3,7 @@
 			<title>Confidential</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>pressel neotonics – Confidential</title><script>
-fetch('https://ipapi.co/json/')
-.then(response => response.json())
-.then(data => {
-    if (data.country === 'BR') {
-        // Se o país for Brasil, redireciona imediatamente para a página de bloqueio
-        window.location.href = 'ps.html';
-    }
-})
-.catch(error => {
-    console.error('Houve um erro ao obter a localização:', error);
-});
-</script>
+<title>Confidential</title>
 <link rel="alternate" type="application/rss+xml" title="Feed para Aprobado »" href="https://aprovado.live/feed/">
 <link rel="alternate" type="application/rss+xml" title="Feed de comentários para Aprobado »" href="https://aprovado.live/comments/feed/">
 <link rel="alternate" type="application/rss+xml" title="Feed de comentários para Aprobado » pressel neotonics" href="https://aprovado.live/p/feed/">
@@ -323,7 +311,36 @@ var elementorFrontendConfig = {"environmentMode":{"edit":false,"wpPreview":false
 <script src="js/B6opSFvWJASg.js" id="elementor-frontend-js"></script>
 <script src="js/T9kEXCDjTF0Q.js" id="pro-elements-handlers-js"></script>
 	
+	<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        function getUTMParameters() {
+            let params = {};
+            let queryString = window.location.search.substring(1);
+            let regex = /([^&=]+)=([^&]*)/g;
+            let match;
+            while (match = regex.exec(queryString)) {
+                params[decodeURIComponent(match[1])] = decodeURIComponent(match[2]);
+            }
+            return params;
+        }
 
+        function addUTMParametersToLinks() {
+            let utmParams = getUTMParameters();
+            let utmString = Object.keys(utmParams).map(key => `${key}=${utmParams[key]}`).join('&');
+            let links = document.querySelectorAll('a');
+
+            links.forEach(link => {
+                let url = new URL(link.href);
+                if (utmString) {
+                    url.search += (url.search ? '&' : '') + utmString;
+                    link.href = url.toString();
+                }
+            });
+        }
+
+        addUTMParametersToLinks();
+    });
+</script>
 
 
 </body></html><!-- Page supported by LiteSpeed Cache 6.0.0.1 on 2024-03-03 22:57:31 -->
