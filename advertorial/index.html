@@ -238,6 +238,136 @@ a { color: inherit; text-decoration: none; }
   .nav-logo-text { font-size: 18px; }
   .article-body p { font-size: 15.5px; }
   .navbar-inner { padding: 0 12px; }
+.tabbot{
+    max-width:1100px;
+    margin:40px auto;
+    padding:0 24px;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+.tabbot-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+    padding-bottom:10px;
+    border-bottom:1px solid #e5e5e5;
+}
+
+.tabbot-title{
+    font-size:20px;
+    font-weight:700;
+    font-style:italic;
+    color:#222;
+}
+
+.tabbot-by{
+    font-size:14px;
+    color:#999;
+    font-style:italic;
+}
+
+.tabbot-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:12px;
+}
+
+.tabbot-card{
+    display:block;
+    text-decoration:none;
+    color:#222;
+    background:#fff;
+}
+
+.tabbot-thumb{
+    display:block;
+    width:100%;
+    aspect-ratio:16/9;
+    object-fit:cover;
+}
+
+.tabbot-card-title{
+    padding:8px 0;
+    font-size:15px;
+    line-height:1.25;
+    font-weight:700;
+    min-height:58px;
+}
+
+.tabbot-card:hover .tabbot-card-title{
+    text-decoration:underline;
+}
+
+.tabbot-card-foot{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:6px;
+}
+
+.tabbot-card-sponsored{
+    font-size:11px;
+    color:#9b9b9b;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    font-weight:700;
+}
+
+.tabbot-card-btn{
+    display:inline-block;
+    padding:7px 14px;
+    background:#f5f5f5;
+    border:1px solid #999;
+    color:#333;
+    font-size:13px;
+    line-height:1;
+    border-radius:2px;
+}
+
+@media (max-width:768px){
+
+    .tabbot{
+        padding:0 18px;
+    }
+
+    .tabbot-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:12px;
+    }
+
+    .tabbot-title{
+        font-size:18px;
+    }
+
+    .tabbot-card-title{
+        font-size:14px;
+        min-height:54px;
+    }
+
+    .tabbot-card-btn{
+        padding:6px 12px;
+        font-size:12px;
+    }
+
+}
+
+@media (max-width:480px){
+
+    .tabbot{
+        padding:0 16px;
+    }
+
+    .tabbot-grid{
+        grid-template-columns:1fr;
+        gap:16px;
+    }
+
+    .tabbot-card-title{
+        min-height:auto;
+    }
+
 }
 </style>
 
@@ -418,24 +548,46 @@ a { color: inherit; text-decoration: none; }
 		</div>
 					</div>
 		</section>
-		<div data-aos="fade-up" class="hostinger-elementor-aos elementor-element elementor-element-8ce60ba e-flex e-con-boxed e-con e-parent" data-id="8ce60ba" data-element_type="container" data-e-type="container">
-					<div class="e-con-inner">
-				<div class="elementor-element elementor-element-19ad8ca elementor-widget__width-initial elementor-widget-mobile__width-inherit elementor-widget elementor-widget-heading" data-id="19ad8ca" data-element_type="widget" data-e-type="widget" data-widget_type="heading.default">
-					<h2 class="elementor-heading-title elementor-size-default"><p style="margin:0;color:#cc0000">
-  <strong>WATCH THE 5-MINUTE VIDEO TO DROP YOUR BLOOD PRESSURE TO 120/80 NATURALLY</strong><span></span></p></h2>				</div>
-				<div class="elementor-element elementor-element-2d4eb64 elementor-widget__width-initial elementor-widget-mobile__width-initial elementor-widget elementor-widget-image" data-id="2d4eb64" data-element_type="widget" data-e-type="widget" data-widget_type="image.default">
-																<a href="https://wellnessdaily.lifestyle/bpvsl/">
-							<img decoding="async" src="images/0032caa7-da8a-4dd0-8d89-f28158204828.png" title="0032caa7-da8a-4dd0-8d89-f28158204828" alt="0032caa7-da8a-4dd0-8d89-f28158204828" loading="lazy">								</a>
-															</div>
-				<div class="elementor-element elementor-element-f9e7d15 elementor-align-center elementor-mobile-align-center elementor-widget__width-initial elementor-widget-mobile__width-inherit elementor-widget elementor-widget-button" data-id="f9e7d15" data-element_type="widget" data-e-type="widget" data-widget_type="button.default">
-										<a class="elementor-button elementor-button-link elementor-size-sm" href="https://wellnessdaily.lifestyle/bpvsl/">
-						<span class="elementor-button-content-wrapper">
-									<span class="elementor-button-text">WATCH THE FULL VIDEO NOW</span>
-					</span>
-					</a>
-								</div>
-				<div class="elementor-element elementor-element-93bf8ca elementor-widget__width-initial elementor-widget-mobile__width-inherit elementor-widget elementor-widget-html" data-id="93bf8ca" data-element_type="widget" data-e-type="widget" data-widget_type="html.default">
-					<style>
+
+<div class="cta-section" style="max-width:700px;margin:30px auto;text-align:center;padding:0 15px;">
+
+    <h2 style="color:#cc0000;font-size:clamp(24px,4vw,36px);font-weight:700;line-height:1.3;margin-bottom:20px;">
+        WATCH THE 5-MINUTE VIDEO TO DROP YOUR BLOOD PRESSURE TO 120/80 NATURALLY
+    </h2>
+
+    <a href="https://wellnessdaily.lifestyle/bpvsl/" style="display:block;margin-bottom:20px;">
+        <img src="images/0032caa7-da8a-4dd0-8d89-f28158204828.png"
+             alt="Watch the video"
+             style="width:100%;max-width:650px;height:auto;border-radius:8px;display:block;margin:0 auto;">
+    </a>
+
+    <a href="https://wellnessdaily.lifestyle/bpvsl/"
+       style="display:inline-block;background:#28a745;color:#fff;text-decoration:none;font-weight:700;font-size:20px;padding:18px 36px;border-radius:8px;transition:.2s;">
+        WATCH THE FULL VIDEO NOW
+    </a>
+
+</div>
+
+<style>
+@media (max-width:768px){
+    .cta-section{
+        padding:0 16px;
+    }
+
+    .cta-section h2{
+        font-size:28px!important;
+    }
+
+    .cta-section a:last-child{
+        display:block!important;
+        width:100%;
+        box-sizing:border-box;
+        font-size:18px!important;
+        padding:18px 15px!important;
+    }
+}
+</style>
+<style>
   .vidwarn {
     max-width: 720px;
     margin: 18px auto;
@@ -667,58 +819,71 @@ a { color: inherit; text-decoration: none; }
 @media (max-width:480px){ .tabbot-grid{ grid-template-columns:1fr; } }
 </style>
 <div class="tabbot">
-  <div class="tabbot-head">
-    <span class="tabbot-title">More from around the web</span>
-    <span class="tabbot-by">by Taboola</span>
-  </div>
-  <div class="tabbot-grid">
-    <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
-      <img decoding="async" class="tabbot-thumb" src="images/outbrain_halesowennews_co_uk_2026_03_03_a7b9e09b.webp" alt="">
-      <div class="tabbot-card-title">Your Heart Might Be Sending Signals—20 Red Flags to Spot Now</div>
-      <div class="tabbot-card-foot">
-        <span class="tabbot-card-sponsored">Sponsored</span>
-        <span class="tabbot-card-btn">Learn More</span>
-      </div>
-    </a>
-    <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
-      <img decoding="async" class="tabbot-thumb" src="images/revcontent_breitbart_com_2025_05_09_de0a57cf.jpg" alt="">
-      <div class="tabbot-card-title">Heart Surgeon Begs People Over 60: "Stop Eating This for Breakfast"</div>
-      <div class="tabbot-card-foot">
-        <span class="tabbot-card-sponsored">Sponsored</span>
-        <span class="tabbot-card-btn">Learn More</span>
-      </div>
-    </a>
-    <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
-      <img decoding="async" class="tabbot-thumb" src="images/revcontent_chron_com_2025_08_19_1c9aeb71.jpg" alt="">
-      <div class="tabbot-card-title">3 "Healthy" Foods That Clog Your Arteries</div>
-      <div class="tabbot-card-foot">
-        <span class="tabbot-card-sponsored">Sponsored</span>
-        <span class="tabbot-card-btn">Learn More</span>
-      </div>
-    </a>
-    <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
-      <img decoding="async" class="tabbot-thumb" src="images/taboola_kplctv_com_2026_06_23_4bb9757c.png" alt="">
-      <div class="tabbot-card-title">Surgeon: Unclog Your Arteries by 93% (Without Giving Up Salt)</div>
-      <div class="tabbot-card-foot">
-        <span class="tabbot-card-sponsored">Sponsored</span>
-        <span class="tabbot-card-btn">Learn More</span>
-      </div>
-    </a>
-    <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
-      <img decoding="async" class="tabbot-thumb" src="images/taboola_businessinsider_com_2026_06_23_ea4e8c9b.jpg" alt="">
-      <div class="tabbot-card-title">Drink 1 Cup a Day to Prevent Heart Diseases & Clogged Arteries</div>
-      <div class="tabbot-card-foot">
-        <span class="tabbot-card-sponsored">Sponsored</span>
-        <span class="tabbot-card-btn">Learn More</span>
-      </div>
-    </a>
-    <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
-      <img decoding="async" class="tabbot-thumb" src="images/taboola_businessinsider_com_2026_06_13_d301a928.png" alt="">
-      <div class="tabbot-card-title">If You Have Hypertension or a "Weak Heart", Watch This Now</div>
-      <div class="tabbot-card-foot">
-        <span class="tabbot-card-sponsored">Sponsored</span>
-        <span class="tabbot-card-btn">Learn More</span>
-      </div>
+
+    <div class="tabbot-head">
+        <span class="tabbot-title">More from around the web</span>
+        <span class="tabbot-by">by Taboola</span>
+    </div>
+
+    <div class="tabbot-grid">
+
+        <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
+            <img class="tabbot-thumb" src="images/outbrain_halesowennews_co_uk_2026_03_03_a7b9e09b.webp" alt="">
+            <div class="tabbot-card-title">Your Heart Might Be Sending Signals—20 Red Flags to Spot Now</div>
+            <div class="tabbot-card-foot">
+                <span class="tabbot-card-sponsored">Sponsored</span>
+                <span class="tabbot-card-btn">Learn More</span>
+            </div>
+        </a>
+
+        <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
+            <img class="tabbot-thumb" src="images/revcontent_breitbart_com_2025_05_09_de0a57cf.jpg" alt="">
+            <div class="tabbot-card-title">Heart Surgeon Begs People Over 60: "Stop Eating This for Breakfast"</div>
+            <div class="tabbot-card-foot">
+                <span class="tabbot-card-sponsored">Sponsored</span>
+                <span class="tabbot-card-btn">Learn More</span>
+            </div>
+        </a>
+
+        <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
+            <img class="tabbot-thumb" src="images/revcontent_chron_com_2025_08_19_1c9aeb71.jpg" alt="">
+            <div class="tabbot-card-title">3 "Healthy" Foods That Clog Your Arteries</div>
+            <div class="tabbot-card-foot">
+                <span class="tabbot-card-sponsored">Sponsored</span>
+                <span class="tabbot-card-btn">Learn More</span>
+            </div>
+        </a>
+
+        <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
+            <img class="tabbot-thumb" src="images/taboola_kplctv_com_2026_06_23_4bb9757c.png" alt="">
+            <div class="tabbot-card-title">Surgeon: Unclog Your Arteries by 93% (Without Giving Up Salt)</div>
+            <div class="tabbot-card-foot">
+                <span class="tabbot-card-sponsored">Sponsored</span>
+                <span class="tabbot-card-btn">Learn More</span>
+            </div>
+        </a>
+
+        <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
+            <img class="tabbot-thumb" src="images/taboola_businessinsider_com_2026_06_23_ea4e8c9b.jpg" alt="">
+            <div class="tabbot-card-title">Drink 1 Cup a Day to Prevent Heart Diseases &amp; Clogged Arteries</div>
+            <div class="tabbot-card-foot">
+                <span class="tabbot-card-sponsored">Sponsored</span>
+                <span class="tabbot-card-btn">Learn More</span>
+            </div>
+        </a>
+
+        <a class="tabbot-card" href="https://wellnessdaily.lifestyle/bpvsl/">
+            <img class="tabbot-thumb" src="images/taboola_businessinsider_com_2026_06_13_d301a928.png" alt="">
+            <div class="tabbot-card-title">If You Have Hypertension or a "Weak Heart", Watch This Now</div>
+            <div class="tabbot-card-foot">
+                <span class="tabbot-card-sponsored">Sponsored</span>
+                <span class="tabbot-card-btn">Learn More</span>
+            </div>
+        </a>
+
+    </div>
+
+</div>
     </a>
   </div>
 </div>				</div>
