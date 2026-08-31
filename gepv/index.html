@@ -57,7 +57,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 <script type="text/javascript" src="js/track.js"></script>
 <script>
   // ALTERE O LINK PARA A PÁGINA QUE QUISER MOSTRAR QUANDO O USUÁRIO TENTAR SAIR
-  const link = 'https://forsugarreset.com/srt-aff-buy-dtc/?aff_id=2182';
+  const link = 'https://myglycotide.com/gtd-aff-buy-dtc/?aff_id=86134';
 
   function setBackRedirect(url) {
     let urlBackRedirect = url;
@@ -82,19 +82,631 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 </script>
 
 		<!-- Preload Vturb -->
-		<script>!function(i,n){i._plt=i._plt||(n&&n.timeOrigin?n.timeOrigin+n.now():Date.now())}(window,performance);</script>
-<link rel="preload" href="js/player.js" as="script">
-<link rel="preload" href="js/smartplayer.js" as="script">
+<script>!function(i,n){i._plt=i._plt||(n&&n.timeOrigin?n.timeOrigin+n.now():Date.now())}(window,performance);</script>
+<link rel="preload" href="https://scripts.converteai.net/f93eec12-25d1-4295-afcb-b6ad233b41e1/ab-test/6a96062f56744c7de1307390/player.js" as="script">
+<link rel="preload" href="https://scripts.converteai.net/lib/js/smartplayer-wc/v4/smartplayer.js" as="script">
 <link rel="dns-prefetch" href="https://cdn.converteai.net">
 <link rel="dns-prefetch" href="https://scripts.converteai.net">
 <link rel="dns-prefetch" href="https://images.converteai.net">
 <link rel="dns-prefetch" href="https://m3u8.vturb.net">
 <link rel="dns-prefetch" href="https://license.vturb.com">
 		<!-- Preload Vturb -->
+		
+		<!-- SCRIPT JVZOO -->
+ <script>
+    /**
+     * JVZoo Affiliate Link Tracking & Rewriting Script
+     *
+     * This script performs two main functions:
+     * 1. Fires one tracking pixel per unique JVZoo product detected on the page
+     *    (deduped by productId; late-injected products fire on detection)
+     * 2. Rewrites all JVZoo buy button links to include affiliate tracking parameters
+     *
+     * Features:
+     * - Handles relative (/b/...) and absolute (https://...) links
+     * - Preserves existing query parameters and hash fragments
+     * - Case-insensitive parameter deduplication (prevents aid/AID duplicates)
+     * - Watches for dynamically-added links via MutationObserver
+     * - Works on vendor sites (non-JVZoo domains)
+     */
+    ;(function(){
+      // Prevent multiple initialization
+      if (window.__JVZ_B_LINK_INIT__) return;
+      window.__JVZ_B_LINK_INIT__ = true;
+    
+      // ===== Browser Compatibility Check =====
+      // Exit early if required APIs are not available (IE10 and below)
+      if (typeof URL === 'undefined' || typeof URLSearchParams === 'undefined' || typeof MutationObserver === 'undefined') {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[JVZ] Browser not supported (missing URL, URLSearchParams, or MutationObserver)');
+        }
+        return;
+      }
+    
+      // ===== Configuration Options =====
+      /**
+       * Fallback product ID to use if no JVZoo links are found on the page.
+       * Leave empty ('') to skip tracking pixel if no product IDs are detected.
+       * Example: '123456'
+       */
+      const FALLBACK_PRODUCT_ID = '';
+    
+      /**
+       * When true, ALL page query parameters are added to buy button links.
+       * When false, only parameters in ALWAYS_PASS are added.
+       */
+      const REWRITE_ENABLED = true;
+    
+      /**
+       * Parameters that are ALWAYS added to buy button links, even when REWRITE_ENABLED is false.
+       * Note: 'tid' is intentionally excluded - it's only needed for click tracking, not purchase flow.
+       * These values are case-insensitive (matched as lowercase).
+       */
+      const ALWAYS_PASS = new Set(['aid','coupon']);
+    
+      /**
+       * Debounce delay (ms) for mutation observer to prevent excessive processing.
+       * Higher values reduce CPU usage but increase delay before new links are processed.
+       */
+      const DEBOUNCE_MS = 200;
+    
+      /**
+       * Safety timeout (ms) to drop our reference to the tracking Image() if onload/onerror never fire.
+       * The reference is held so the in-flight request isn't aborted by GC; this timeout caps that hold.
+       */
+      const PIXEL_REF_TIMEOUT_MS = 10000;
+    
+      /**
+       * "Already fired" time-to-live for sessionStorage-backed dedupe.
+       * Prevents an accidental refresh / back-button from refiring within this window, while still
+       * letting a legitimate later revisit of the same tab re-fire (e.g. user navigates away and back
+       * after several minutes).
+       */
+      const FIRE_TTL_MS = 5 * 60 * 1000;
+    
+      /**
+       * Prefix for sessionStorage keys used to persist fired-product state across page reloads.
+       */
+      const FIRE_STORAGE_PREFIX = 'jvzFired:';
+    
+      /**
+       * Whitelist of allowed JVZoo hostnames. Only links to these domains are processed.
+       */
+      const ALLOWED_HOSTNAMES = Object.freeze([
+        'www.jvzoo.com', 'i.jvzoo.com', 'jvzoo.com'
+      ]);
+    
+      /**
+       * Regex pattern for validating parameter keys (security).
+       * Allows: 1-64 characters, alphanumeric + underscore + hyphen, cannot start with hyphen.
+       */
+      const PARAM_KEY_PATTERN = /^[a-zA-Z0-9_][a-zA-Z0-9_-]{0,63}$/;
+    
+      // ===== Global State Management =====
+      /**
+       * Global state object for tracking script execution and preventing race conditions.
+       * Stored on window object to persist across function calls and allow external debugging.
+       */
+      window.__JVZ__ = window.__JVZ__ || {
+        updating: false,            // Reentry guard: prevents updateBuyLinks from calling itself
+        firedProducts: new Map(),   // productId -> timestamp; backs the in-memory side of TTL dedupe
+        pendingPixels: new Set(),   // Live references to in-flight Image() pixels (prevents GC before dispatch)
+        pendingUpdateCount: 0       // Count of queued mutations (prevents starvation during rapid DOM changes)
+      };
+      // Migrate older shapes (pageFired boolean, or firedProducts as a Set) — coerce to Map.
+      if (!(window.__JVZ__.firedProducts instanceof Map)) {
+        const prior = window.__JVZ__.firedProducts;
+        const migrated = new Map();
+        if (prior && typeof prior.forEach === 'function') {
+          const now = Date.now();
+          prior.forEach(productId => migrated.set(String(productId), now));
+        }
+        window.__JVZ__.firedProducts = migrated;
+      }
+      if (!window.__JVZ__.pendingPixels) window.__JVZ__.pendingPixels = new Set();
+      // If a prior version's pageFired:true is still set, defer marking all currently-visible products
+      // as fired until init() (when findAllProductIdsOnPage is defined). Preserves "already fired" intent.
+      const __legacyPageFired = window.__JVZ__.pageFired === true;
+      delete window.__JVZ__.pageFired;
+    
+      // ===== Debug Logging =====
+      /**
+       * Set DEBUG = true to enable console logging, or set window.__JVZ_DEBUG__ = true in browser console.
+       */
+      const DEBUG = false;
+    
+      /**
+       * Logs debug messages only when debugging is enabled.
+       * Used for tracking failures and skipped operations.
+       */
+      const dbgFail = (...args) => {
+        if (DEBUG || window.__JVZ_DEBUG__) {
+          if (typeof console !== 'undefined') {
+            (console.debug || console.log).apply(console, ['[JVZ]', ...args]);
+          }
+        }
+      };
+    
+      // ===== Parse and Normalize Current Page Parameters =====
+      /**
+       * Extract query parameters from the current page URL and normalize affiliate params.
+       *
+       * IMPORTANT: JVZoo's affiliate system treats aid/tid/coupon as case-insensitive.
+       * We normalize these to lowercase to prevent duplicate parameters (e.g., AID + aid).
+       * If JVZoo changes this behavior, tracking may break.
+       *
+       * Examples:
+       *   Input:  ?AID=123&TID=456&foo=bar
+       *   Output: ?aid=123&tid=456&foo=bar
+       */
+      const qp = new URLSearchParams(window.location.search);
+      const pageParams = new URLSearchParams();
+    
+      for (const [key, value] of qp.entries()) {
+        const kLower = key.toLowerCase();
+        // Normalize JVZoo-specific parameters to lowercase
+        if (kLower === 'aid' || kLower === 'tid' || kLower === 'coupon') {
+          pageParams.set(kLower, value);
+        } else {
+          // Preserve original case for all other parameters
+          pageParams.set(key, value);
+        }
+      }
+    
+      // Extract affiliate ID and tracking ID for later use
+      const aidRaw = pageParams.get('aid');
+      const tidRaw = pageParams.get('tid');
+    
+      // ===== URL Parser: Validates and Extracts JVZoo Link Information =====
+      /**
+       * Parses a URL to determine if it's a valid JVZoo link and extracts IDs.
+       *
+       * Supported URL formats:
+       *   - https://www.jvzoo.com/b/182/46/99 (full URL with /b/)
+       *   - https://i.jvzoo.com/182/46/99 (pixel form without /b/)
+       *   - //www.jvzoo.com/b/182/46/99 (protocol-relative)
+       *   - /b/182/46/99 (relative on vendor sites - normalized to jvzoo.com)
+       *   - /B/182/46/99 (uppercase B also supported)
+       *   - https://vendor.com/b/182/46/99 (absolute on vendor sites - normalized to jvzoo.com)
+       *
+       * @param {string} url - The URL to parse
+       * @returns {Object|null} - Object with {url, funnelId, productId, buttonId} or null if invalid
+       */
+      function parseJVZUrl(url) {
+        try {
+          // Security: Allow protocol-relative JVZoo links (//www.jvzoo.com/...) but reject others
+          const trimmedUrl = url && url.trim();
+          if (trimmedUrl && /^\/\/+/.test(trimmedUrl)) {
+            const testUrl = new URL('https:' + trimmedUrl);
+            const testHostname = testUrl.hostname.toLowerCase();
+            if (!ALLOWED_HOSTNAMES.includes(testHostname)) {
+              dbgFail('parseJVZUrl: protocol-relative URL not allowed', url);
+              return null;
+            }
+            // Valid JVZoo protocol-relative URL - continue processing
+          }
+    
+          // Parse URL (relative URLs resolved against current page)
+          const u = new URL(url, window.location.href);
+    
+          // Check if this is a /b/ or /B/ path
+          const hostname = u.hostname.toLowerCase();
+          const isBPath = /^\/[bB]\//.test(u.pathname);
+    
+          // Handle vendor site links: if pathname starts with /b/ but domain isn't JVZoo, normalize it
+          if (!ALLOWED_HOSTNAMES.includes(hostname)) {
+            if (isBPath) {
+              // Rewrite vendor /b/ links to point to jvzoo.com, preserving query & hash
+              // Example: https://vendor.com/b/1/2/3?foo=bar#anchor → https://www.jvzoo.com/b/1/2/3?foo=bar#anchor
+              const relativeUrl = new URL('https://www.jvzoo.com' + u.pathname + u.search + u.hash);
+              const relativeMatch = relativeUrl.pathname.match(/^\/(?:[bB]\/)?(\d+)\/(\d+)(?:\/(\d+))?(?:[\/? #]|$)/);
+              if (relativeMatch) {
+                return {
+                  url: relativeUrl,
+                  funnelId: relativeMatch[1],
+                  productId: relativeMatch[2],
+                  buttonId: relativeMatch[3] || null
+                };
+              }
+            }
+    
+            // Security: Reject untrusted subdomains (e.g., evil.jvzoo.com)
+            if (hostname.endsWith('.jvzoo.com')) {
+              dbgFail('parseJVZUrl: untrusted subdomain', hostname);
+            }
+            return null;
+          }
+    
+          // Parse JVZoo URL pathname to extract IDs
+          // Pattern matches: /b/182/46/99 or /182/46/99 or /182/46 (buttonId optional)
+          const m = u.pathname.match(/^\/(?:[bB]\/)?(\d+)\/(\d+)(?:\/(\d+))?(?:[\/? #]|$)/);
+          if (!m) return null;
+    
+          return {
+            url: u,
+            funnelId: m[1],
+            productId: m[2],
+            buttonId: m[3] || null  // null for tracking pixels
+          };
+        } catch (e) {
+          dbgFail('parseJVZUrl: error parsing', url, e);
+          return null;
+        }
+      }
+    
+      // Scan anchors, areas, images, and iframes for ALL unique JVZoo product IDs on the page.
+      // Dedupe key is productId only (not funnel/product) because the pixel URL at /c/{aid}/{productId}
+      // does not encode the funnel — duplicating across funnels would emit identical pixels.
+      function findAllProductIdsOnPage() {
+        const nodes = document.querySelectorAll('a[href*="jvzoo.com"], a[href^="/b/"], a[href^="/B/"], area[href*="jvzoo.com"], area[href^="/b/"], area[href^="/B/"], img[src*="jvzoo.com"], iframe[src*="jvzoo.com"]');
+        const seen = new Set();
+        const productIds = [];
+        for (const el of nodes) {
+          const url = el.getAttribute('href') || el.getAttribute('src');
+          if (!url) continue;
+          const info = parseJVZUrl(url);
+          if (!info || !info.productId) continue;
+          const pid = String(info.productId);
+          if (seen.has(pid)) continue;
+          seen.add(pid);
+          productIds.push(pid);
+        }
+        return productIds;
+      }
+    
+      // ===== 3) Fired-product persistence with TTL =====
+      /**
+       * sessionStorage key for a (aid, productId) pair. aid is included so a session that swapped
+       * affiliate IDs (rare but possible on multi-affiliate vendor pages) tracks each separately.
+       */
+      function fireStorageKey(productId) {
+        return FIRE_STORAGE_PREFIX + (aidRaw || '') + '|' + productId;
+      }
+    
+      /**
+       * True if a tracking pixel has already fired for this productId.
+       *
+       * In-memory state is sticky for the page's lifetime — once we've fired on this page, no DOM
+       * mutation later (regardless of how much time passes) will refire. TTL applies only to
+       * sessionStorage on initial load: if a prior page load fired within FIRE_TTL_MS, a refresh
+       * still considers it fired; outside that window, a refresh re-fires.
+       */
+      function hasFiredRecently(productId) {
+        const fired = window.__JVZ__.firedProducts;
+        if (fired.has(productId)) return true;
+    
+        try {
+          const raw = sessionStorage.getItem(fireStorageKey(productId));
+          if (raw == null) return false;
+          const ts = Number(raw);
+          if (!Number.isFinite(ts)) return false;
+          if (Date.now() - ts < FIRE_TTL_MS) {
+            // Hydrate memory so subsequent calls don't depend on storage.
+            fired.set(productId, ts);
+            return true;
+          }
+          sessionStorage.removeItem(fireStorageKey(productId));
+        } catch (_) { /* sessionStorage may be disabled / quota-exceeded; ignore */ }
+    
+        return false;
+      }
+    
+      function markFired(productId) {
+        const now = Date.now();
+        window.__JVZ__.firedProducts.set(productId, now);
+        try { sessionStorage.setItem(fireStorageKey(productId), String(now)); } catch (_) {}
+      }
+    
+      /**
+       * Dispatch a tracking pixel. Prefers fetch with keepalive (survives page unload during
+       * buy-button clicks) and falls back to a retained Image() if fetch is unavailable or rejects.
+       * credentials:'include' matches the cookie behavior of an Image pixel, important for any
+       * cookie-based attribution on the JVZoo /c/ endpoint.
+       */
+      function dispatchPixel(url) {
+        const pending = window.__JVZ__.pendingPixels;
+    
+        const fireImagePixel = () => {
+          try {
+            const img = new Image();
+            let released = false;
+            let timer = null;
+            const release = () => {
+              if (released) return;
+              released = true;
+              if (timer !== null) clearTimeout(timer);
+              pending.delete(img);
+            };
+            img.onload = release;
+            img.onerror = release;
+            pending.add(img);
+            timer = setTimeout(release, PIXEL_REF_TIMEOUT_MS);
+            img.src = url;
+          } catch (e) {
+            dbgFail('dispatchPixel: image fallback threw', e);
+          }
+        };
+    
+        if (typeof fetch === 'function') {
+          try {
+            fetch(url, { mode: 'no-cors', credentials: 'include', keepalive: true })
+              .catch(() => fireImagePixel());
+            return;
+          } catch (_) {
+            // Fall through to Image() if fetch throws synchronously (very old browsers, CSP edge cases)
+          }
+        }
+        fireImagePixel();
+      }
+    
+      // ===== Fire one tracking pixel per unique product on the page =====
+      function fireClicksForProducts() {
+        // Explicitly check for empty string (e.g., ?aid= with no value)
+        if (!aidRaw || aidRaw.trim() === '') {
+          dbgFail('click: skip -> missing or empty aid');
+          return;
+        }
+    
+        let productIds = findAllProductIdsOnPage();
+        if (productIds.length === 0) {
+          if (FALLBACK_PRODUCT_ID && /^\d+$/.test(String(FALLBACK_PRODUCT_ID))) {
+            productIds = [String(FALLBACK_PRODUCT_ID)];
+          } else {
+            dbgFail('click: skip -> no jvzoo id found in DOM and no valid FALLBACK_PRODUCT_ID');
+            return;
+          }
+        }
+    
+        productIds.forEach(productId => {
+          if (hasFiredRecently(productId)) return;
+    
+          try {
+            const clickUrl = new URL(`https://www.jvzoo.com/c/${encodeURIComponent(aidRaw)}/${productId}`);
+            pageParams.forEach((v, k) => clickUrl.searchParams.set(k, v));
+    
+            dispatchPixel(clickUrl.toString());
+    
+            // Mark fired only after dispatch has been initiated.
+            markFired(productId);
+          } catch (e) {
+            dbgFail('click: failed to fire tracking pixel for product', productId, e);
+          }
+        });
+      }
+    
+      // ===== 4) Build URLSearchParams with case-insensitive keys =====
+      // More efficient: build params from scratch instead of modifying existing
+      function buildParamsWithCaseInsensitive(originalParams, overlayParams, shouldOverlay) {
+        const result = new URLSearchParams();
+        const seenKeysLower = new Map(); // track lowercase keys to prevent duplicates
+    
+        // Helper to add param with case-insensitive deduplication
+        const addParam = (key, value) => {
+          // Validate parameter key for security (1-64 chars, can't start with hyphen)
+          if (!PARAM_KEY_PATTERN.test(key)) {
+            dbgFail('addParam: invalid parameter key', key);
+            return;
+          }
+    
+          const keyLower = key.toLowerCase();
+          // If we've seen this key (case-insensitive), delete using the ORIGINAL case
+          const existingKey = seenKeysLower.get(keyLower);
+          if (existingKey !== undefined) {
+            result.delete(existingKey);  // URLSearchParams.delete() is case-sensitive!
+          }
+          result.set(key, value);
+          seenKeysLower.set(keyLower, key);
+        };
+    
+        // Add original params first
+        originalParams.forEach((v, k) => addParam(k, v));
+    
+        // Overlay page params based on rules
+        overlayParams.forEach((v, k) => {
+          const kLower = k.toLowerCase();
+          // Skip 'tid' - it's only for click tracking, not purchase flow
+          if (kLower === 'tid') return;
 
-		<script>var mysrc = "https://tracking.buygoods.com/track/?a=12377&firstcookie=0"+"&tracking_redirect=&referrer="+encodeURIComponent(document.referrer)+"&sessid2="+ReadCookie('sessid2')+"&product=PP_SRT2UNITS_AFF,PP_SRT3UNITS_AFF,PP_SRT6UNITS_AFF&vid1=&vid2=&vid3=&caller_url="+encodeURIComponent(window.location.href); if(typeof add_to_cart !== 'undefined') { mysrc = mysrc+'&add_to_cart='+add_to_cart; } var newScript = document.createElement('script'); newScript.type = 'text/javascript'; newScript.defer = true; newScript.src = mysrc; var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(newScript, s); function ReadCookie(name){name += '='; var parts = document.cookie.split(/;\s*/);for (var i = 0; i < parts.length; i++) {var part = parts[i]; if (part.indexOf(name) == 0) return part.substring(name.length)} return '';}</script>
-<script type="text/javascript">setTimeout(function () {var i = document.createElement("iframe"),oid = new URLSearchParams(window.location.search);i.async = true;i.style="display:none";i.setAttribute("src", "https://buygoods.com/affiliates/go/conversion/iframe/bg?a=12377&t=e60ff10c65c36c58755c3435cdba3fda&s="+ReadCookie('sessid2'));document.body.appendChild(i);}, 1000);</script>
-
+          if (ALWAYS_PASS.has(kLower) || shouldOverlay) {
+            addParam(k, v);
+          }
+        });
+    
+        return result;
+      }
+    
+      // ===== 5) Rewrite /b/ anchors (only <a>, not images/iframes) =====
+      function updateBuyLinks() {
+        // Reentry guard: prevent triggering ourselves
+        if (window.__JVZ__.updating) return;
+        window.__JVZ__.updating = true;
+    
+        try {
+          // Optimized selector: target JVZoo domain + relative /b/ or /B/ links
+          const selector = [
+            'a[href*="jvzoo.com"]:not([data-jvz-processed])',
+            'a[href^="/b/"]:not([data-jvz-processed])',
+            'a[href^="/B/"]:not([data-jvz-processed])'
+          ].join(', ');
+    
+          document.querySelectorAll(selector).forEach(a => {
+            const href = a.getAttribute('href');
+            if (!href) return;
+    
+            const info = parseJVZUrl(href);
+            if (!info) return;
+    
+            try {
+              // Start from canonical origin+pathname (preserves funnel/product/button ids)
+              const newUrl = new URL(info.url.origin + info.url.pathname);
+    
+              // Build params efficiently with case-insensitive deduplication
+              const newParams = buildParamsWithCaseInsensitive(
+                info.url.searchParams,  // original link params
+                pageParams,             // page params to overlay
+                REWRITE_ENABLED         // whether to overlay all params
+              );
+    
+              newUrl.search = newParams.toString();
+    
+              // Preserve hash fragment if present (for anchor links and SPAs)
+              if (info.url.hash) {
+                newUrl.hash = info.url.hash;
+              }
+    
+              const newHref = newUrl.toString();
+    
+              // Only update if href actually changed (avoid unnecessary mutations)
+              if (href !== newHref) {
+                a.setAttribute('href', newHref);
+              }
+    
+              // Store the processed href value (not just boolean) to detect future changes
+              a.dataset.jvzProcessed = 'true';
+              a.dataset.jvzLastHref = newHref;
+            } catch (e) {
+              dbgFail('updateBuyLinks: error processing link', href, e);
+            }
+          });
+        } finally {
+          window.__JVZ__.updating = false;
+    
+          // Process any mutations that arrived while we were updating
+          // Using counter prevents starvation if mutations arrive during setTimeout window
+          if (window.__JVZ__.pendingUpdateCount > 0) {
+            window.__JVZ__.pendingUpdateCount = 0;
+            // Schedule on next tick to avoid immediate recursion
+            setTimeout(() => updateBuyLinks(), 0);
+          }
+        }
+      }
+    
+      // ===== 6) Debounce helper =====
+      function debounce(fn, delay) {
+        let timer = null;
+        return (...args) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => fn(...args), delay);
+        };
+      }
+    
+      // ===== 7) Init & observe late-injected links =====
+      function init(){
+        updateBuyLinks();
+    
+        // Honor a hot-swap from an older script that left pageFired:true. Mark all currently-visible
+        // products as fired (with current timestamp) so we don't refire what the prior version already sent.
+        if (__legacyPageFired) {
+          findAllProductIdsOnPage().forEach(pid => markFired(pid));
+        }
+    
+        fireClicksForProducts();
+    
+        const handleMutations = debounce(() => {
+          updateBuyLinks();
+          // Also fire pixels for any newly-added unique products. The in-memory Map keeps fired
+          // products sticky for this page's lifetime, so previously-fired products won't re-emit
+          // regardless of how much time has passed since dispatch.
+          fireClicksForProducts();
+        }, DEBOUNCE_MS);
+    
+        const observer = new MutationObserver(records => {
+          // If we're currently updating, increment counter for later processing
+          if (window.__JVZ__.updating) {
+            window.__JVZ__.pendingUpdateCount++;
+            return;
+          }
+    
+          let shouldUpdate = false;
+          for (const rec of records) {
+            if (rec.type === 'attributes' && rec.attributeName === 'href' && rec.target instanceof Element) {
+              const wasProcessed = rec.target.dataset.jvzProcessed === 'true';
+              const href = rec.target.getAttribute('href') || '';
+    
+              if (wasProcessed) {
+                const lastHref = rec.target.dataset.jvzLastHref || '';  // Fallback for undefined
+    
+                // If href changed since we processed it, clear flags and trigger update
+                // Let updateBuyLinks determine if it's a valid JVZoo link
+                if (href !== lastHref) {
+                  rec.target.removeAttribute('data-jvz-processed');
+                  rec.target.removeAttribute('data-jvz-last-href');
+                  shouldUpdate = true;
+                  break;
+                }
+              } else {
+                // Unprocessed anchor changed to a JVZoo link - trigger update
+                if (parseJVZUrl(href)) {
+                  shouldUpdate = true;
+                  break;
+                }
+              }
+            }
+            for (const node of rec.addedNodes) {
+              if (!(node instanceof Element)) continue;
+              // Use matchesFn for better browser compatibility
+              const matchesFn = node.matches || node.msMatchesSelector || node.webkitMatchesSelector;
+              const querySelectorFn = node.querySelector;
+    
+              // Combined selector. Includes anchors and areas (for link rewriting), and img/iframe
+              // with jvzoo.com src (so newly-injected pixel-form products on vendor pages also
+              // trigger a fresh fireClicksForProducts pass).
+              const linkSelector = 'a[href*="jvzoo.com"], a[href^="/b/"], a[href^="/B/"], area[href*="jvzoo.com"], area[href^="/b/"], area[href^="/B/"], img[src*="jvzoo.com"], iframe[src*="jvzoo.com"]';
+    
+              if (
+                (matchesFn && matchesFn.call(node, linkSelector)) ||
+                (querySelectorFn && querySelectorFn.call(node, linkSelector))
+              ) { shouldUpdate = true; break; }
+            }
+            if (shouldUpdate) break;
+          }
+          if (shouldUpdate) {
+            handleMutations();
+          }
+        });
+    
+        // Attach observer to body (retry if body doesn't exist yet)
+        const attachObserver = (retries = 0) => {
+          if (!document.body) {
+            // Body still doesn't exist, wait and retry with limit
+            if (retries < 50) {  // Max 50 retries = ~500ms
+              setTimeout(() => attachObserver(retries + 1), 10);
+            } else {
+              dbgFail('attachObserver: gave up waiting for document.body after 50 retries');
+            }
+            return;
+          }
+    
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['href']
+          });
+        };
+    
+        attachObserver();
+      }
+    
+      // ===== 8) Optional: Reset firedProducts on SPA navigation =====
+      // Uncomment if you want to fire clicks on each route change (not just page load).
+      // Note: this only clears in-memory state — sessionStorage entries still honor FIRE_TTL_MS.
+      // window.addEventListener('popstate', () => {
+      //   window.__JVZ__.firedProducts = new Map();
+      //   fireClicksForProducts();
+      // });
+    
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init, { once: true });
+      } else {
+        init();
+      }
+    })();
+    </script>
+	
+	
+		<!-- FIM SCRIPT JVZOO -->
+	
 <script>
 (function() {
     var DOMAIN = "jrvt7.rdtk.io";
@@ -247,8 +859,8 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 
 
 					<!-- video code here -->
-				<vturb-smartplayer id="ab-6a62598f90be3e33683e3c30" style="display: block; margin: 0 auto; width: 100%; "></vturb-smartplayer> <script type="text/javascript"> var s=document.createElement("script"); s.src="https://scripts.converteai.net/f93eec12-25d1-4295-afcb-b6ad233b41e1/ab-test/6a62598f90be3e33683e3c30/player.js", s.async=!0,document.head.appendChild(s); </script>					<!-- video code here -->
-
+				<vturb-smartplayer id="ab-6a96062f56744c7de1307390" style="display: block; margin: 0 auto; width: 100%; "></vturb-smartplayer> <script type="text/javascript"> var s=document.createElement("script"); s.src="https://scripts.converteai.net/f93eec12-25d1-4295-afcb-b6ad233b41e1/ab-test/6a96062f56744c7de1307390/player.js", s.async=!0,document.head.appendChild(s); </script>
+				
 
 
 					<div class="news-content">
@@ -299,14 +911,14 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 						<!-- CTA Headline -->
 						<div class="py-3 py-md-5" style="background-color: var(--primary-color);">
 							<div class="container text-center">
-								<h2 class="title-claim mb-0 text-white">Choose Your Discounted SugarReset Package
+								<h2 class="title-claim mb-0 text-white">Choose Your Discounted Glyco Eden Package
 									With Our Special Time-Limited Offer!</h2>
 								<div class="strip3 flt">
 									<div class="container bdinpad">
 										<ul class="strip3-list">
 											<li>
 												<img src="images/hour-glass.png" class="hourglass">
-												<strong>SugarReset Bottles Remaining:</strong> <span class="countdown">218</span>
+												<strong>Glyco Eden Bottles Remaining:</strong> <span class="countdown">218</span>
 											</li>
 										</ul>
 									</div>
@@ -334,7 +946,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 
 									<!-- 3 + 3 Bottles -->
 									<div class="col-12 col-md-4 mb-3 order-md-2">
-										<a href="https://buygoods.com/secure/checkout.html?account_id=12377&amp;product_codename=PP_SRT6UNITS_AFF&amp;redirect=aHR0cHM6Ly9pbXByb3ZpbmdvdXJoZWFsdGguY29tL3NydC1hZmYtYnV5LXVwMS8=&amp;aff_id=2182" title="3 + 3 Bottles" class="item promo buylink">
+										<a href="https://www.jvzoo.com/b/117985/449447/99?aid=3625879" title="3 + 3 Bottles" class="item promo buylink">
 											<div class="wrapper">
 												<div class="item-header">BEST VALUE!</div>
 												<div class="item-img">
@@ -375,7 +987,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 
 									<!-- 2 + 1 Bottles -->
 									<div class="col-12 col-md-4 mb-3 order-md-3">
-										<a href="https://buygoods.com/secure/checkout.html?account_id=12377&amp;product_codename=PP_SRT3UNITS_AFF&amp;redirect=aHR0cHM6Ly9pbXByb3ZpbmdvdXJoZWFsdGguY29tL3NydC1hZmYtYnV5LXVwMS8=&amp;aff_id=2182" class="item buylink">
+										<a href="https://www.jvzoo.com/b/117985/449445/99?aid=3625879" class="item buylink">
 											<div class="wrapper">
 												<div class="item-header text-white">Most Popular</div>
 												<div class="item-img">
@@ -414,7 +1026,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 
 									<!-- 1 Bottles -->
 									<div class="col-12 col-md-4 mb-3 order-md-1">
-										<a href="https://buygoods.com/secure/checkout.html?account_id=12377&amp;product_codename=PP_SRT2UNITS_AFF&amp;redirect=aHR0cHM6Ly9pbXByb3ZpbmdvdXJoZWFsdGguY29tL3NydC1hZmYtYnV5LXVwMS8=&amp;aff_id=2182" class="item buylink">
+										<a href="https://www.jvzoo.com/b/117985/449443/99?aid=3625879" class="item buylink">
 											<div class="wrapper">
 												<div class="item-header text-white">Basic</div>
 												<div class="item-img">
@@ -470,11 +1082,11 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 										<p>If for any reason within 60 days you're not satisfied with the product, just send an email to <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="11726251657974626476706363746274653f727e7c">[email&nbsp;protected]</a> and we'll
 											immediately buy back all the bottles from you at the same price you paid — no questions asked and no hassles.</p>
 										<p>Simply return the unused bottles, and we’ll buy them all back — even if they’re damaged. No questions asked — it’s an
-											unconditional guarantee! That’s how confident we are in SugarReset.</p>
+											unconditional guarantee! That’s how confident we are in Glyco Eden.</p>
 										<p>And if you choose the 6-bottle package, your guarantee becomes even more powerful:</p>
 										<p>You’ll be automatically covered by our Lifetime Guarantee — meaning you can ask for your money back at any time in the future, if
 											you’re not completely satisfied.</p>
-										<p>So, click below and order your SugarReset kit today, completely risk-free. We guarantee your results with our own money — for
+										<p>So, click below and order your Glyco Eden kit today, completely risk-free. We guarantee your results with our own money — for
 											life.</p>
 
 
@@ -504,7 +1116,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 										<div class="col-lg-10 d-flex align-items-center">
 											<div>
 												<h2 style="color: #fff;">
-													Transform Your Body Faster With Our 3 Or 6 Month SugarReset
+													Transform Your Body Faster With Our 3 Or 6 Month Glyco Eden
 													Package — Plus FREE Shipping!
 												</h2>
 
@@ -520,7 +1132,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 						<div id="testimonials" class="py-3">
 							<div class="container" style="max-width: 1000px;">
 								<h3 class="my-3 mb-0 text-center" style="color: var(--primary-color); font-weight: 700;">
-									What People Are Saying About SugarReset?
+									What People Are Saying About Glyco Eden?
 								</h3>
 								<h4 class="text-center fw-bold mb-4">Real Life-Changing Results!</h4>
 								<p class="fw-bold mb-2 text-center text-black">Top reviews from the United
@@ -552,7 +1164,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 														<p>
 															Last Sunday my 6 year old granddaughter asked me to walk with her in the park. i had to look away so she wouldnt
 															see me tear up, because for the first time in years i could walk right beside her without my sugar crashing on
-															me. before SugarReset i couldnt even get to the end of my own driveway without the burning in my feet and the
+															me. before Glyco Eden i couldnt even get to the end of my own driveway without the burning in my feet and the
 															exhaustion stopping me cold. i dont say this lightly but it gave me my life back.
 														</p>
 													</div>
@@ -644,7 +1256,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 													<div class="text-user">
 														<p>
 															After i hit 60 the blurry vision and the burning in my feet got so bad i could barely sleep. my doctor was
-															actually the one who told me about SugarReset, said take it every day. i did exactly that because the thought of
+															actually the one who told me about Glyco Eden, said take it every day. i did exactly that because the thought of
 															losing my independence scared me more than anything. two months in and the tingling is gone, things feel steady,
 															and i finally feel free again. wish i found it sooner
 														</p>
@@ -730,7 +1342,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 													<div class="text-user">
 														<p>
 															i used to sit quiet at family dinners, scared to eat in front of everybody because id get dizzy or feel awful.
-															the shame was the worst part, ill never forget that feeling. after i started SugarReset everything turned
+															the shame was the worst part, ill never forget that feeling. after i started Glyco Eden everything turned
 															around. last week i got up and danced with my husband at our grandsons birthday party. i went from being the one
 															everybody worried about to the one giving them hope. never thought id say that
 														</p>
@@ -803,14 +1415,14 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 						<!-- CTA Headline -->
 						<div class="py-3 py-md-5" style="background-color: var(--primary-color);">
 							<div class="container text-center">
-								<h2 class="title-claim mb-0 text-white">Choose Your Discounted SugarReset Package
+								<h2 class="title-claim mb-0 text-white">Choose Your Discounted Glyco Eden Package
 									With Our Special Time-Limited Offer!</h2>
 								<div class="strip3 flt">
 									<div class="container bdinpad">
 										<ul class="strip3-list">
 											<li>
 												<img src="images/hour-glass.png" class="hourglass">
-												<strong>SugarReset Bottles Remaining:</strong> <span class="countdown">218</span>
+												<strong>Glyco Eden Bottles Remaining:</strong> <span class="countdown">218</span>
 											</li>
 										</ul>
 									</div>
@@ -839,7 +1451,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 
 									<!-- 3 + 3 Bottles -->
 									<div class="col-12 col-md-4 mb-3 order-md-2">
-										<a href="https://buygoods.com/secure/checkout.html?account_id=12377&amp;product_codename=PP_SRT6UNITS_AFF&amp;redirect=aHR0cHM6Ly9pbXByb3ZpbmdvdXJoZWFsdGguY29tL3NydC1hZmYtYnV5LXVwMS8=&amp;aff_id=2182" title="3 + 3 Bottles" class="item promo buylink">
+										<a href="https://www.jvzoo.com/b/117985/449447/99?aid=3625879" title="3 + 3 Bottles" class="item promo buylink">
 											<div class="wrapper">
 												<div class="item-header">BEST VALUE!</div>
 												<div class="item-img">
@@ -880,7 +1492,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 
 									<!-- 2 + 1 Bottles -->
 									<div class="col-12 col-md-4 mb-3 order-md-3">
-										<a href="https://buygoods.com/secure/checkout.html?account_id=12377&amp;product_codename=PP_SRT3UNITS_AFF&amp;redirect=aHR0cHM6Ly9pbXByb3ZpbmdvdXJoZWFsdGguY29tL3NydC1hZmYtYnV5LXVwMS8=&amp;aff_id=2182" class="item buylink">
+										<a href="https://www.jvzoo.com/b/117985/449445/99?aid=3625879" class="item buylink">
 											<div class="wrapper">
 												<div class="item-header text-white">Most Popular</div>
 												<div class="item-img">
@@ -919,7 +1531,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 
 									<!-- 1 Bottles -->
 									<div class="col-12 col-md-4 mb-3 order-md-1">
-										<a href="https://buygoods.com/secure/checkout.html?account_id=12377&amp;product_codename=PP_SRT2UNITS_AFF&amp;redirect=aHR0cHM6Ly9pbXByb3ZpbmdvdXJoZWFsdGguY29tL3NydC1hZmYtYnV5LXVwMS8=&amp;aff_id=2182" class="item buylink">
+										<a href="https://www.jvzoo.com/b/117985/449443/99?aid=3625879" class="item buylink">
 											<div class="wrapper">
 												<div class="item-header text-white">Basic</div>
 												<div class="item-img">
@@ -978,9 +1590,9 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 										</h2>
 										<div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
 											<div class="accordion-body">
-												SugarReset is made with 100% natural ingredients in a U.S. FDA-registered and GMP-certified
+												Glyco Eden is made with 100% natural ingredients in a U.S. FDA-registered and GMP-certified
 												facility. Still, if you're taking metformin, insulin, blood pressure medication, or any
-												other prescription drug, do not change your dosage on your own. Take SugarReset alongside
+												other prescription drug, do not change your dosage on your own. Take Glyco Eden alongside
 												your current routine and involve your doctor so they can monitor your progress safely.
 											</div>
 										</div>
@@ -996,7 +1608,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 										<div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
 											<div class="accordion-body">
 												Most blood sugar supplements rely on generic capsule formulas that lose potency during
-												digestion. SugarReset uses a sublingual liquid delivery system built around concentrated
+												digestion. Glyco Eden uses a sublingual liquid delivery system built around concentrated
 												Suri oleocanthal, allowing absorption under the tongue instead of through the stomach.
 												And for extra peace of mind, every order is protected by a 60-day money-back guarantee.
 											</div>
@@ -1029,7 +1641,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 										</h2>
 										<div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
 											<div class="accordion-body">
-												Not at all. SugarReset was designed to support healthy blood sugar and metabolism at any
+												Not at all. Glyco Eden was designed to support healthy blood sugar and metabolism at any
 												age. Many older adults report improvements in energy, comfort, and overall well-being
 												after staying consistent with the protocol. Age does not prevent your body from responding
 												to the right nutritional support.
@@ -1046,7 +1658,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 										</h2>
 										<div id="collapseFive" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
 											<div class="accordion-body">
-												No. SugarReset was created to fit into your daily routine without extreme diets or intense
+												No. Glyco Eden was created to fit into your daily routine without extreme diets or intense
 												workouts. Simply place two drops under your tongue each morning and stay consistent.
 												Healthy eating habits may improve results, but they are meant to support the process —
 												not replace it.
@@ -1080,7 +1692,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 										</h2>
 										<div id="collapseSeven" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
 											<div class="accordion-body">
-												SugarReset is only available through the official website to ensure product authenticity,
+												Glyco Eden is only available through the official website to ensure product authenticity,
 												freshness, and quality control. Purchasing elsewhere may expose you to counterfeit or
 												expired products that are not covered under the official guarantee.
 											</div>
@@ -1112,7 +1724,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 										</h2>
 										<div id="collapseNine" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
 											<div class="accordion-body">
-												In most cases, yes. However, because SugarReset already contains a complete blend of active
+												In most cases, yes. However, because Glyco Eden already contains a complete blend of active
 												ingredients, it’s best to review your current supplements with your healthcare provider to
 												avoid unnecessary overlap.
 											</div>
@@ -1161,7 +1773,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 										</h2>
 										<div id="collapseTwelve" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
 											<div class="accordion-body">
-												Every SugarReset order comes with a 60-day money-back guarantee. If you’re not satisfied
+												Every Glyco Eden order comes with a 60-day money-back guarantee. If you’re not satisfied
 												with your experience, simply contact support within 60 days of receiving your order for a
 												full refund — no complicated forms or return process required.
 											</div>
@@ -1209,7 +1821,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 											down natural GLP-1 production.</p>
 										<br>
 
-										<p>That discovery became SugarReset — a sublingual formula built to eliminate the parasite, restore GLP-1, and rebalance blood sugar at
+										<p>That discovery became Glyco Eden — a sublingual formula built to eliminate the parasite, restore GLP-1, and rebalance blood sugar at
 											its
 											source. In a Cleveland Clinic study of 6,438 Americans, <span class="highlight">83% reduced or eliminated their diabetes medication
 												in
@@ -1288,11 +1900,11 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 									<p>If for any reason within 60 days you're not satisfied with the product, just send an email to <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="20435360544845535547415252455345540e434f4d">[email&nbsp;protected]</a> and we'll
 										immediately buy back all the bottles from you at the same price you paid — no questions asked and no hassles.</p>
 									<p>Simply return the unused bottles, and we’ll buy them all back — even if they’re damaged. No questions asked — it’s an
-										unconditional guarantee! That’s how confident we are in SugarReset.</p>
+										unconditional guarantee! That’s how confident we are in Glyco Eden.</p>
 									<p>And if you choose the 6-bottle package, your guarantee becomes even more powerful:</p>
 									<p>You’ll be automatically covered by our Lifetime Guarantee — meaning you can ask for your money back at any time in the future, if
 										you’re not completely satisfied.</p>
-									<p>So, click below and order your SugarReset kit today, completely risk-free. We guarantee your results with our own money — for
+									<p>So, click below and order your Glyco Eden kit today, completely risk-free. We guarantee your results with our own money — for
 										life.</p>
 
 									<div class="d-flex gap-2 flex-wrap align-items-center justify-content-center mt-3 badges">
@@ -1312,13 +1924,13 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 					<div class="py-3 py-md-5" style="background-color: var(--primary-color);">
 						<div class="container text-center">
 							<h2 class="title-claim mb-0 text-white">Hurry! Limited Stock Available – Secure
-								Your SugarReset Package at 50% Off Today!</h2>
+								Your Glyco Eden Package at 50% Off Today!</h2>
 							<div class="strip3 flt">
 								<div class="container bdinpad">
 									<ul class="strip3-list">
 										<li>
 											<img src="images/hour-glass.png" class="hourglass">
-											<strong>SugarReset Bottles Remaining:</strong> <span class="countdown">218</span>
+											<strong>Glyco Eden Bottles Remaining:</strong> <span class="countdown">218</span>
 										</li>
 									</ul>
 								</div>
@@ -1347,7 +1959,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 
 								<!-- 3 + 3 Bottles -->
 								<div class="col-12 col-md-4 mb-3 order-md-2">
-									<a href="https://buygoods.com/secure/checkout.html?account_id=12377&amp;product_codename=PP_SRT6UNITS_AFF&amp;redirect=aHR0cHM6Ly9pbXByb3ZpbmdvdXJoZWFsdGguY29tL3NydC1hZmYtYnV5LXVwMS8=&amp;aff_id=2182" title="3 + 3 Bottles" class="item promo buylink">
+									<a href="https://www.jvzoo.com/b/117985/449447/99?aid=3625879" title="3 + 3 Bottles" class="item promo buylink">
 										<div class="wrapper">
 											<div class="item-header">BEST VALUE!</div>
 											<div class="item-img">
@@ -1388,7 +2000,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 
 								<!-- 2 + 1 Bottles -->
 								<div class="col-12 col-md-4 mb-3 order-md-3">
-									<a href="https://buygoods.com/secure/checkout.html?account_id=12377&amp;product_codename=PP_SRT3UNITS_AFF&amp;redirect=aHR0cHM6Ly9pbXByb3ZpbmdvdXJoZWFsdGguY29tL3NydC1hZmYtYnV5LXVwMS8=&amp;aff_id=2182" class="item buylink">
+									<a href="https://www.jvzoo.com/b/117985/449445/99?aid=3625879" class="item buylink">
 										<div class="wrapper">
 											<div class="item-header text-white">Most Popular</div>
 											<div class="item-img">
@@ -1427,7 +2039,7 @@ src="https://www.facebook.com/tr?id=1432585335345608&ev=PageView&noscript=1"
 
 								<!-- 1 Bottles -->
 								<div class="col-12 col-md-4 mb-3 order-md-1">
-									<a href="https://buygoods.com/secure/checkout.html?account_id=12377&amp;product_codename=PP_SRT2UNITS_AFF&amp;redirect=aHR0cHM6Ly9pbXByb3ZpbmdvdXJoZWFsdGguY29tL3NydC1hZmYtYnV5LXVwMS8=&amp;aff_id=2182" class="item buylink">
+									<a href="https://www.jvzoo.com/b/117985/449443/99?aid=3625879" class="item buylink">
 										<div class="wrapper">
 											<div class="item-header text-white">Basic</div>
 											<div class="item-img">
