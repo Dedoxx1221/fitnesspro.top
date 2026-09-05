@@ -1,3 +1,24 @@
+;(function () {
+    try {
+        if (window.__rtkMetaCapiLoading) return;
+        window.__rtkMetaCapiLoading = true;
+        function runMetaCapi() {
+            try {
+                var lib = window.clientParamBuilder;
+                if (lib && typeof lib.processAndCollectAllParams === 'function') {
+                    lib.processAndCollectAllParams(window.location.href);
+                }
+            } catch (e) {}
+        }
+        if (window.clientParamBuilder) { runMetaCapi(); return; }
+        var s = document.createElement('script');
+        s.src = 'https://unpkg.com/meta-capi-param-builder-clientjs/dist/clientParamBuilder.bundle.js';
+        s.async = true;
+        s.onload = runMetaCapi;
+        (document.head || document.documentElement).appendChild(s);
+    } catch (e) {}
+})();
+
 function getCookie(name) {
     var value = "; " + document.cookie;
     var parts = value.split("; " + name + "=");
@@ -17,7 +38,7 @@ var pixelParams = "&" + locSearch.substr(1) + "&sub19=" + rtkfbp + "&sub20=" + r
 if (campaignID == "") {
     campaignID = urlParams.get('rtkcmpid')
 }
-var initialSrc = "https://rt.yourhealthydailyguide.com/" + campaignID + "?format=json";
+var initialSrc = "https://trk.tagessinn.shop/" + campaignID + "?format=json";
 
 function stripTrailingSlash(str) {
     return str.replace(/\/$/, "");
@@ -31,7 +52,7 @@ function fixHrefWithClick(
     _rtkClickID
 ) {
     document.querySelectorAll('a').forEach(function (el) {
-        if (el.href.indexOf("rt.yourhealthydailyguide.com/click") > -1) {
+        if (el.href.indexOf("trk.tagessinn.shop/click") > -1) {
             if (el.href.indexOf('?') > -1) {
                 el.href = stripTrailingSlash(el.href) + "&clickid=" + (_rtkClickID || _rawData.clickid) + "&rtkck=" + _cachebuster
             } else {
@@ -54,7 +75,7 @@ setTimeout(function () {
                 setCookie();
                 // fixHrefWithClick(rawData, cachebuster)
                 document.querySelectorAll('a').forEach(function (el) {
-                    if (el.href.indexOf("rt.yourhealthydailyguide.com/click") > -1) {
+                    if (el.href.indexOf("trk.tagessinn.shop/click") > -1) {
                         if (el.href.indexOf('?') > -1) {
                             el.href = stripTrailingSlash(el.href) + "&clickid=" + rawData.clickid + "&rtkck=" + cachebuster
                         } else {
@@ -66,7 +87,7 @@ setTimeout(function () {
                     }
                 });
                 xhrr = new XMLHttpRequest;
-                xhrr.open("GET", "https://rt.yourhealthydailyguide.com/view?clickid=" + rawData.clickid)
+                xhrr.open("GET", "https://trk.tagessinn.shop/view?clickid=" + rawData.clickid)
                 xhrr.send();
             }
         }
@@ -76,11 +97,11 @@ setTimeout(function () {
         rtkClickID = urlParams.get('rtkcid')
         setCookie();
         xhrTrack = new XMLHttpRequest;
-        xhrTrack.open("GET", "https://rt.yourhealthydailyguide.com/view?clickid=" + rtkClickID)
+        xhrTrack.open("GET", "https://trk.tagessinn.shop/view?clickid=" + rtkClickID)
         xhrTrack.send();
         // fixHrefWithClick(rawData, cachebuster, rtkClickID)
         document.querySelectorAll('a').forEach(function (el) {
-            if (el.href.indexOf("rt.yourhealthydailyguide.com/click") > -1) {
+            if (el.href.indexOf("trk.tagessinn.shop/click") > -1) {
                 if (el.href.indexOf('?') > -1) {
                     el.href = stripTrailingSlash(el.href) + "&clickid=" + rtkClickID + "&rtkck=" + cachebuster
                 } else {
@@ -101,3 +122,34 @@ function setCookie() {
     var date = date.toUTCString();
     document.cookie = cookieName + "=" + cookieValue + "; expires=" + date + "; path=/;"
 }
+
+;(function () {
+    try {
+        let attempt = 0
+        const maxAttempts = 10 // = 10s (with 1s interval)
+        const interval = setInterval(() => {
+            try {
+                attempt++
+                const fbp = getCookie('_fbp')
+                const fbc = getCookie('_fbc')
+                const clickId = getCookie('rtkclickid-store')
+
+                if ((fbp || fbc) && clickId) {
+                    clearInterval(interval)
+                    const url = new URL('https://trk.tagessinn.shop/clickupd/' + clickId)
+
+                    if (fbc) url.searchParams.set('fbc', fbc)
+                    if (fbp) url.searchParams.set('fbp', fbp)
+
+                    const xhr = new XMLHttpRequest()
+                    xhr.open('GET', url.href)
+                    xhr.send()
+                } else if (attempt >= maxAttempts) {
+                    clearInterval(interval)
+                }
+            } catch (e) {
+                clearInterval(interval)
+            }
+        }, 1000)
+    } catch (e) {}
+})();
